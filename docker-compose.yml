@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: dentistry_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dentistry_pg_2026
+      POSTGRES_DB: dentistry
+    volumes:
+      - dentistry_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dentistry"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: dentistry_backend
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:dentistry_pg_2026@db:5432/dentistry
+      BACKEND_PUBLIC_URL: http://localhost:8001
+      FRONTEND_URLS: http://localhost:5175,http://localhost:5176
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - dentistry_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: dentistry_frontend
+    ports:
+      - "5175:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  admin-frontend:
+    build: ./admin-frontend
+    container_name: dentistry_admin
+    ports:
+      - "5176:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  dentistry_pgdata:
+  dentistry_uploads:
