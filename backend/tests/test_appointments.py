@@ -32,20 +32,14 @@ def _auth_headers(token: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def test_available_slots_returns_200_with_params(client: TestClient) -> None:
-    """available-slots endpoint requires doctor_id, service_id, and date params."""
+def test_available_slots_returns_404_for_nonexistent_doctor(client: TestClient) -> None:
+    """available-slots returns 404 when the requested doctor does not exist."""
     future_date = (date.today() + timedelta(days=7)).isoformat()
     resp = client.get(
         AVAILABLE_SLOTS_URL,
-        params={"doctor_id": 1, "service_id": 1, "date": future_date},
+        params={"doctor_id": 9999, "service_id": 1, "date": future_date},
     )
-    # Returns 200 even if doctor/service don't exist — the service returns empty slots
-    assert resp.status_code == 200
-    data = resp.json()
-    # Response should be an object with a "slots" key (AvailableSlotsResponse)
-    assert isinstance(data, dict)
-    assert "slots" in data
-    assert isinstance(data["slots"], list)
+    assert resp.status_code == 404
 
 
 def test_available_slots_missing_params(client: TestClient) -> None:

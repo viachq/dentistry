@@ -281,8 +281,8 @@ export default function PatientPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
-        {(["appointments", "book", "card"] as Tab[]).map((t) => (
+      <div className="flex flex-wrap gap-2 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
+        {(["appointments", "book", "card", "profile", "notifications"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setBookingSuccess(false); setBookingError(""); }}
@@ -290,7 +290,11 @@ export default function PatientPage() {
               tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {t === "appointments" ? "Мої записи" : t === "book" ? "Записатися" : "Моя картка"}
+            {t === "appointments" ? "Мої записи"
+              : t === "book" ? "Записатися"
+              : t === "card" ? "Моя картка"
+              : t === "profile" ? "Профіль"
+              : "Мої сповіщення"}
           </button>
         ))}
       </div>
@@ -490,6 +494,154 @@ export default function PatientPage() {
               {cardSaving ? "Збереження..." : "Зберегти картку"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Profile */}
+      {tab === "profile" && (
+        <div className="space-y-6 max-w-xl">
+          {/* Edit profile section */}
+          <div className="card">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Редагувати профіль</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Повне ім'я</label>
+                <input
+                  className="input"
+                  placeholder="Іван Петренко"
+                  value={profileForm.full_name}
+                  onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Телефон</label>
+                <input
+                  className="input"
+                  placeholder="+380501234567"
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="example@email.com"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                />
+              </div>
+              {profileSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                  {profileSuccess}
+                </div>
+              )}
+              {profileError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {profileError}
+                </div>
+              )}
+              <button onClick={handleSaveProfile} disabled={profileSaving} className="btn-primary w-full py-3">
+                {profileSaving ? "Збереження..." : "Зберегти профіль"}
+              </button>
+            </div>
+          </div>
+
+          {/* Change password section */}
+          <div className="card">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Змінити пароль</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Поточний пароль</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  value={pwForm.current_password}
+                  onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Новий пароль</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  value={pwForm.new_password}
+                  onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Підтвердіть новий пароль</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  value={pwForm.confirm_new_password}
+                  onChange={(e) => setPwForm({ ...pwForm, confirm_new_password: e.target.value })}
+                />
+              </div>
+              {pwSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                  {pwSuccess}
+                </div>
+              )}
+              {pwError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {pwError}
+                </div>
+              )}
+              <button onClick={handleChangePassword} disabled={pwSaving} className="btn-primary w-full py-3">
+                {pwSaving ? "Збереження..." : "Змінити пароль"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications */}
+      {tab === "notifications" && (
+        <div className="max-w-xl">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Мої сповіщення</h2>
+            {notifications.some((n) => !n.is_read) && (
+              <button
+                onClick={handleMarkAllNotifRead}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Позначити всі як прочитані
+              </button>
+            )}
+          </div>
+          {notifLoading ? (
+            <LoadingBlock />
+          ) : notifications.length === 0 ? (
+            <div className="card text-center py-12">
+              <p className="text-gray-500">Немає сповіщень</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`card cursor-pointer transition-colors ${n.is_read ? "opacity-70" : "border-blue-200 bg-blue-50"}`}
+                  onClick={() => !n.is_read && handleMarkNotifRead(n.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    {!n.is_read && (
+                      <span className="mt-1.5 flex-shrink-0 w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    )}
+                    <div className={!n.is_read ? "" : "pl-5"}>
+                      <p className="font-medium text-gray-900">{n.title}</p>
+                      <p className="text-sm text-gray-600 mt-0.5">{n.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">{formatNotifDate(n.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
