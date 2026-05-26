@@ -6,8 +6,10 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, full_name: string, phone?: string) => Promise<void>;
+  register: (username: string, password: string, full_name: string, phone?: string, email?: string) => Promise<void>;
   logout: () => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateProfile: (data: { full_name?: string; phone?: string; email?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -35,8 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me.data);
   };
 
-  const register = async (username: string, password: string, full_name: string, phone?: string) => {
-    await api.post("/auth/register", { username, password, full_name, phone });
+  const register = async (username: string, password: string, full_name: string, phone?: string, email?: string) => {
+    await api.post("/auth/register", { username, password, full_name, phone, email });
     await login(username, password);
   };
 
@@ -45,8 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await api.post("/auth/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  };
+
+  const updateProfile = async (data: { full_name?: string; phone?: string; email?: string }) => {
+    const r = await api.patch<User>("/auth/me", data);
+    setUser(r.data);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, changePassword, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

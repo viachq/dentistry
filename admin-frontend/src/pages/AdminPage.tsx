@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
 import { api } from "../shared/api";
 import type {
   Appointment, Doctor, Service, PromoCode, Review,
-  AdminFinanceSummary, DoctorFinanceSummary, Expense, ClinicSettings, User
+  AdminFinanceSummary, DoctorFinanceSummary, Expense, ClinicSettings, User,
+  BeforeAfterCase, ContactMessage, MonthlyAnalytics,
 } from "../shared/types";
 import { formatCurrency, formatDateTime, statusLabel, statusColor } from "../shared/format";
 import LoadingBlock from "../components/LoadingBlock";
 
-type Tab = "appointments" | "finance" | "services" | "doctors" | "promo" | "reviews" | "patients" | "settings";
+type Tab = "appointments" | "finance" | "services" | "doctors" | "promo" | "reviews" | "patients" | "settings" | "analytics" | "gallery" | "messages";
 
 export default function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = (searchParams.get("tab") as Tab) ?? "appointments";
   const [tab, setTab] = useState<Tab>(tabParam);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    api.get<ContactMessage[]>("/contact-messages").then((r) => {
+      setUnreadCount(r.data.filter((m) => !m.is_read).length);
+    }).catch(() => {});
+  }, [tab]);
 
   const setTab2 = (t: Tab) => {
     setTab(t);
@@ -23,11 +34,14 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "appointments", label: "Записи", icon: "📋" },
     { key: "finance", label: "Фінанси", icon: "💰" },
+    { key: "analytics", label: "Аналітика", icon: "📊" },
     { key: "services", label: "Послуги", icon: "🦷" },
     { key: "doctors", label: "Лікарі", icon: "👨‍⚕️" },
     { key: "promo", label: "Промокоди", icon: "🎫" },
     { key: "reviews", label: "Відгуки", icon: "⭐" },
     { key: "patients", label: "Пацієнти", icon: "👥" },
+    { key: "gallery", label: "До/Після", icon: "🖼" },
+    { key: "messages", label: unreadCount > 0 ? `Повідомлення (${unreadCount})` : "Повідомлення", icon: "✉️" },
     { key: "settings", label: "Налаштування", icon: "⚙️" },
   ];
 
@@ -53,11 +67,14 @@ export default function AdminPage() {
 
       {tab === "appointments" && <AppointmentsTab />}
       {tab === "finance" && <FinanceTab />}
+      {tab === "analytics" && <AnalyticsTab />}
       {tab === "services" && <ServicesTab />}
       {tab === "doctors" && <DoctorsTab />}
       {tab === "promo" && <PromoTab />}
       {tab === "reviews" && <ReviewsTab />}
       {tab === "patients" && <PatientsTab />}
+      {tab === "gallery" && <GalleryTab />}
+      {tab === "messages" && <MessagesTab />}
       {tab === "settings" && <SettingsTab />}
     </div>
   );
@@ -248,7 +265,27 @@ function FinanceTab() {
 
       {/* Expenses */}
       <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4">Витрати</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Витрати</h3>
+          <button
+            onClick={() => {
+              const header = "Дата,Категорія,Сума (грн),Опис\n";
+              const rows = expenses.map(e =>
+                `${e.expense_date},"${e.category}",${e.amount},"${e.description ?? ""}"`
+              ).join("\n");
+              const blob = new Blob(["﻿" + header + rows], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `vitrati_${new Date().toISOString().slice(0, 10)}.csv`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="btn-secondary text-sm"
+          >
+            Вивантажити CSV
+          </button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <input className="input" placeholder="Категорія" value={newExpense.category} onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })} />
           <input className="input" placeholder="Сума" type="number" value={newExpense.amount} onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })} />
@@ -747,6 +784,343 @@ function PatientDetail({ patient }: { patient: User }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ===================== ANALYTICS =====================
+const monthNames: Record<string, string> = {
+  "01": "Січ", "02": "Лют", "03": "Бер", "04": "Кві",
+  "05": "Тра", "06": "Чер", "07": "Лип", "08": "Сер",
+  "09": "Вер", "10": "Жов", "11": "Лис", "12": "Гру",
+};
+
+function AnalyticsTab() {
+  const [data, setData] = useState<MonthlyAnalytics[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<MonthlyAnalytics[]>("/analytics/monthly")
+      .then((r) => setData(r.data))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingBlock />;
+
+  const totalRevenue = data.reduce((s, d) => s + d.revenue, 0);
+  const totalExpenses = data.reduce((s, d) => s + d.expenses, 0);
+  const totalAppointments = data.reduce((s, d) => s + d.appointments, 0);
+
+  const chartData = data.map((d) => {
+    const [year, mon] = d.month.split("-");
+    return {
+      name: `${monthNames[mon] ?? mon} ${year}`,
+      "Дохід": d.revenue,
+      "Витрати": d.expenses,
+    };
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card">
+          <p className="text-sm text-gray-500">Загальний дохід</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(totalRevenue)}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-500">Загальні витрати</p>
+          <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(totalExpenses)}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-500">Усього записів</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{totalAppointments}</p>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-900 mb-4">Дохід та витрати по місяцях</h3>
+        {chartData.length === 0 ? (
+          <p className="text-center text-gray-400 py-8">Немає даних</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              <Legend />
+              <Bar dataKey="Дохід" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Витрати" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Monthly table */}
+      <div className="card p-0 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="table-th">Місяць</th>
+              <th className="table-th">Дохід</th>
+              <th className="table-th">Витрати</th>
+              <th className="table-th">Прибуток</th>
+              <th className="table-th">Записів</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {data.map((d) => {
+              const [year, mon] = d.month.split("-");
+              const profit = d.revenue - d.expenses;
+              return (
+                <tr key={d.month} className="hover:bg-gray-50">
+                  <td className="table-td font-medium">{monthNames[mon] ?? mon} {year}</td>
+                  <td className="table-td text-green-600">{formatCurrency(d.revenue)}</td>
+                  <td className="table-td text-red-600">{formatCurrency(d.expenses)}</td>
+                  <td className={`table-td font-semibold ${profit >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                    {formatCurrency(profit)}
+                  </td>
+                  <td className="table-td">{d.appointments}</td>
+                </tr>
+              );
+            })}
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={5} className="table-td text-center text-gray-400">Немає даних</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ===================== GALLERY (BEFORE/AFTER) =====================
+function GalleryTab() {
+  const [cases, setCases] = useState<BeforeAfterCase[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    before_image_url: "",
+    after_image_url: "",
+    doctor_id: "",
+  });
+
+  const load = () => {
+    Promise.all([
+      api.get<BeforeAfterCase[]>("/before-after?all=true"),
+      api.get<Doctor[]>("/doctors?include_inactive=true"),
+    ]).then(([c, d]) => {
+      setCases(c.data);
+      setDoctors(d.data);
+    }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (!form.title || !form.before_image_url || !form.after_image_url || !form.doctor_id) return;
+    await api.post("/before-after", {
+      title: form.title,
+      description: form.description || null,
+      before_image_url: form.before_image_url,
+      after_image_url: form.after_image_url,
+      doctor_id: parseInt(form.doctor_id),
+    });
+    setForm({ title: "", description: "", before_image_url: "", after_image_url: "", doctor_id: "" });
+    load();
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Видалити кейс?")) return;
+    await api.delete(`/before-after/${id}`);
+    load();
+  };
+
+  if (loading) return <LoadingBlock />;
+
+  const getDoctorName = (doctorId: number) => {
+    const doc = doctors.find((d) => d.id === doctorId);
+    return doc ? doc.full_name : `Лікар #${doctorId}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Create form */}
+      <div className="card">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Новий кейс До/Після</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="label">Заголовок*</label>
+            <input
+              className="input"
+              placeholder="Відновлення посмішки"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">Лікар*</label>
+            <select
+              className="input"
+              value={form.doctor_id}
+              onChange={(e) => setForm({ ...form, doctor_id: e.target.value })}
+            >
+              <option value="">Оберіть лікаря</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>{d.full_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">URL фото "До"*</label>
+            <input
+              className="input"
+              placeholder="https://..."
+              value={form.before_image_url}
+              onChange={(e) => setForm({ ...form, before_image_url: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">URL фото "Після"*</label>
+            <input
+              className="input"
+              placeholder="https://..."
+              value={form.after_image_url}
+              onChange={(e) => setForm({ ...form, after_image_url: e.target.value })}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="label">Опис</label>
+            <textarea
+              className="input"
+              rows={2}
+              placeholder="Короткий опис процедури"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+        </div>
+        <button onClick={create} className="btn-primary">Додати кейс</button>
+      </div>
+
+      {/* Cases list */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Кейси ({cases.length})</h2>
+        {cases.length === 0 && (
+          <div className="card text-center text-gray-400 py-8">Кейсів немає</div>
+        )}
+        {cases.map((c) => (
+          <div key={c.id} className="card">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-gray-900">{c.title}</h3>
+                <p className="text-sm text-gray-500">Лікар: {getDoctorName(c.doctor_id)}</p>
+                {c.description && <p className="text-sm text-gray-400 mt-1">{c.description}</p>}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                  {c.is_published ? "Опублікований" : "Чернетка"}
+                </span>
+                <button onClick={() => del(c.id)} className="text-xs text-red-500 hover:underline">
+                  Видалити
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-1 font-medium">До</p>
+                <p className="text-xs text-blue-600 truncate" title={c.before_image_url}>{c.before_image_url}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1 font-medium">Після</p>
+                <p className="text-xs text-blue-600 truncate" title={c.after_image_url}>{c.after_image_url}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ===================== MESSAGES =====================
+function MessagesTab() {
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    api.get<ContactMessage[]>("/contact-messages")
+      .then((r) => setMessages(r.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const markRead = async (id: number) => {
+    await api.patch(`/contact-messages/${id}/read`);
+    load();
+  };
+
+  if (loading) return <LoadingBlock />;
+
+  const unreadCount = messages.filter((m) => !m.is_read).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Повідомлення ({messages.length})
+          {unreadCount > 0 && (
+            <span className="ml-2 text-sm font-normal text-blue-600">
+              {unreadCount} непрочитаних
+            </span>
+          )}
+        </h2>
+      </div>
+
+      {messages.length === 0 && (
+        <div className="card text-center text-gray-400 py-8">Повідомлень немає</div>
+      )}
+
+      {messages.map((m) => (
+        <div
+          key={m.id}
+          className={`card ${!m.is_read ? "bg-blue-50 border border-blue-100" : ""}`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="font-semibold text-gray-900">{m.name}</p>
+                {!m.is_read && (
+                  <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                    Нове
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3 text-sm text-gray-500 mb-2">
+                <span>{m.email}</span>
+                {m.phone && <span>{m.phone}</span>}
+                <span className="text-xs text-gray-400">{formatDateTime(m.created_at)}</span>
+              </div>
+              <p className="text-sm text-gray-700 whitespace-pre-line">{m.message}</p>
+            </div>
+            {!m.is_read && (
+              <button
+                onClick={() => markRead(m.id)}
+                className="ml-4 flex-shrink-0 text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 whitespace-nowrap"
+              >
+                Позначити як прочитане
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

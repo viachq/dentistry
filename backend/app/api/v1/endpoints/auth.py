@@ -5,7 +5,15 @@ from app.api.deps.auth import get_current_user
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.schemas.auth import PatientRegisterRequest, LoginRequest, Token, UserRead
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    PatientRegisterRequest,
+    Token,
+    UpdateProfileRequest,
+    UserRead,
+)
+from app.services import email as email_service
 
 router = APIRouter()
 
@@ -17,6 +25,7 @@ def register_patient(payload: PatientRegisterRequest, db: Session = Depends(get_
         hashed_password=get_password_hash(payload.password),
         full_name=payload.full_name,
         phone=payload.phone,
+        email=payload.email,
         role=UserRole.PATIENT,
         is_active=True,
     )
@@ -30,6 +39,8 @@ def register_patient(payload: PatientRegisterRequest, db: Session = Depends(get_
             detail="Username already exists",
         ) from exc
     db.refresh(user)
+    if user.email:
+        email_service.send_registration_email(user.email, user.full_name)
     return UserRead.model_validate(user)
 
 
@@ -46,4 +57,37 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> Token:
 
 @router.get("/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)) -> UserRead:
+    return UserRead.model_validate(current_user)
+
+
+@router.post("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Невірний поточний пароль",
+        )
+    current_user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+    return {"message": "Пароль змінено успішно"}
+
+
+@router.patch("/me", response_model=UserRead)
+def update_profile(
+    payload: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserRead:
+    if payload.full_name is not None:
+        current_user.full_name = payload.full_name
+    if payload.phone is not None:
+        current_user.phone = payload.phone
+    if payload.email is not None:
+        current_user.email = payload.email
+    db.commit()
+    db.refresh(current_user)
     return UserRead.model_validate(current_user)

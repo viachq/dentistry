@@ -6,6 +6,8 @@ export interface User {
   full_name: string;
   role: UserRole;
   is_active: boolean;
+  phone: string | null;
+  email: string | null;
 }
 
 export interface ClinicSettings {

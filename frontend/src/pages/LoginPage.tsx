@@ -12,6 +12,7 @@ export default function LoginPage() {
     password: "",
     full_name: "",
     phone: "",
+    email: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function LoginPage() {
       if (tab === "login") {
         await login(form.username, form.password);
       } else {
-        await register(form.username, form.password, form.full_name, form.phone || undefined);
+        await register(form.username, form.password, form.full_name, form.phone || undefined, form.email || undefined);
       }
       navigate("/patient");
     } catch (err: any) {
@@ -100,6 +101,18 @@ export default function LoginPage() {
                 required
               />
             </div>
+            {tab === "register" && (
+              <div>
+                <label className="label">Email (необов'язково)</label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="Email (необов'язково)"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+            )}
             {tab === "register" && (
               <div>
                 <label className="label">Телефон (необов'язково)</label>

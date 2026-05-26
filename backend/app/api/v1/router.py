@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
+    analytics,
     appointments,
     auth,
     before_after,
@@ -31,3 +32,4 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(patients.router, prefix="/patients", tags=["patients"])
 api_router.include_router(before_after.router, prefix="/before-after", tags=["before-after"])
 api_router.include_router(contact_messages.router, prefix="/contact-messages", tags=["contact-messages"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

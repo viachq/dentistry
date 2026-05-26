@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../shared/api";
 import { useAuth } from "../features/auth/AuthProvider";
-import type { Appointment, Doctor, Review, Service, AvailableSlot, PatientCard } from "../shared/types";
+import type { Appointment, Doctor, Review, Service, AvailableSlot, PatientCard, Notification } from "../shared/types";
 import { formatCurrency, formatDateTime, statusLabel, statusColor } from "../shared/format";
 import LoadingBlock from "../components/LoadingBlock";
 
-type Tab = "appointments" | "book" | "card";
+type Tab = "appointments" | "book" | "card" | "profile" | "notifications";
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = useState(0);
@@ -34,7 +34,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 export default function PatientPage() {
-  const { user } = useAuth();
+  const { user, changePassword, updateProfile } = useAuth();
   const [tab, setTab] = useState<Tab>("appointments");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
@@ -66,6 +66,22 @@ export default function PatientPage() {
   const [cardForm, setCardForm] = useState({ blood_type: "", allergies: "", chronic_conditions: "", general_notes: "" });
   const [cardSaving, setCardSaving] = useState(false);
 
+  // Profile
+  const [profileForm, setProfileForm] = useState({ full_name: user?.full_name ?? "", phone: user?.phone ?? "", email: user?.email ?? "" });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState("");
+  const [profileError, setProfileError] = useState("");
+
+  // Change password
+  const [pwForm, setPwForm] = useState({ current_password: "", new_password: "", confirm_new_password: "" });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [pwError, setPwError] = useState("");
+
+  // Notifications tab
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+
   useEffect(() => {
     Promise.all([
       api.get<Appointment[]>("/appointments/patient/me"),
@@ -95,6 +111,16 @@ export default function PatientPage() {
           });
         })
         .catch(() => {});
+    }
+    if (tab === "notifications") {
+      setNotifLoading(true);
+      api.get<Notification[]>("/notifications")
+        .then((r) => setNotifications(r.data))
+        .catch(() => {})
+        .finally(() => setNotifLoading(false));
+    }
+    if (tab === "profile" && user) {
+      setProfileForm({ full_name: user.full_name, phone: user.phone ?? "", email: user.email ?? "" });
     }
   }, [tab]);
 
@@ -136,6 +162,68 @@ export default function PatientPage() {
       setReviewSubmitting(false);
     }
   };
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    setProfileSuccess("");
+    setProfileError("");
+    try {
+      await updateProfile({
+        full_name: profileForm.full_name || undefined,
+        phone: profileForm.phone || undefined,
+        email: profileForm.email || undefined,
+      });
+      setProfileSuccess("Профіль збережено!");
+    } catch (err: any) {
+      setProfileError(err.response?.data?.detail ?? "Помилка збереження профілю");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPwSuccess("");
+    setPwError("");
+    if (pwForm.new_password !== pwForm.confirm_new_password) {
+      setPwError("Паролі не збігаються");
+      return;
+    }
+    if (pwForm.new_password.length < 6) {
+      setPwError("Новий пароль має містити не менше 6 символів");
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await changePassword(pwForm.current_password, pwForm.new_password);
+      setPwSuccess("Пароль успішно змінено!");
+      setPwForm({ current_password: "", new_password: "", confirm_new_password: "" });
+    } catch (err: any) {
+      setPwError(err.response?.data?.detail ?? "Помилка зміни паролю");
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const handleMarkNotifRead = async (id: number) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMarkAllNotifRead = async () => {
+    try {
+      await api.post("/notifications/mark-all-read");
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch {
+      // ignore
+    }
+  };
+
+  const formatNotifDate = (iso: string) =>
+    new Date(iso).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   const handleBook = async () => {
     if (!selectedDoctor || !selectedService || !selectedSlot) return;

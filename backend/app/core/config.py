@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     upload_dir: str = str(Path(__file__).resolve().parents[3] / "uploads")
     first_superuser_username: str = "admin"
     first_superuser_password: str = "admin12345"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@dentacare.ua"
+    smtp_tls: bool = True
 
     @property
     def cors_origins(self) -> list[str]:
