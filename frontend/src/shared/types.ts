@@ -20,6 +20,10 @@ export interface ClinicSettings {
   facebook_url: string | null;
   youtube_url: string | null;
   tiktok_url: string | null;
+  twitter_url: string | null;
+  viber_url: string | null;
+  whatsapp_url: string | null;
+  linkedin_url: string | null;
   working_hours_note: string | null;
   about_text: string | null;
 }

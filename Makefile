@@ -26,25 +26,25 @@ help:
 
 dev:
 	docker compose up -d db
-	@echo "Starting backend on http://localhost:8001 ..."
-	@start cmd /k "cd backend && uv run uvicorn app.main:app --reload --port 8001"
-	@echo "Starting frontend on http://localhost:5175 ..."
+	@echo "Starting backend on http://localhost:8870 ..."
+	@start cmd /k "cd backend && uv run uvicorn app.main:app --reload --port 8870"
+	@echo "Starting frontend on http://localhost:3180 ..."
 	@start cmd /k "cd frontend && npm run dev"
-	@echo "Starting admin on http://localhost:5176 ..."
+	@echo "Starting admin on http://localhost:3181 ..."
 	@start cmd /k "cd admin-frontend && npm run dev"
 	@echo ""
-	@echo "  Patient app:  http://localhost:5175"
-	@echo "  Admin panel:  http://localhost:5176"
-	@echo "  API docs:     http://localhost:8001/docs"
+	@echo "  Patient app:  http://localhost:3180"
+	@echo "  Admin panel:  http://localhost:3181"
+	@echo "  API docs:     http://localhost:8870/docs"
 	@echo ""
 
 # ── Full Docker stack ─────────────────────────────────────
 up:
 	docker compose up -d
 	@echo ""
-	@echo "  Patient app:  http://localhost:5175"
-	@echo "  Admin panel:  http://localhost:5176"
-	@echo "  API docs:     http://localhost:8001/docs"
+	@echo "  Patient app:  http://localhost:3180"
+	@echo "  Admin panel:  http://localhost:3181"
+	@echo "  API docs:     http://localhost:8870/docs"
 	@echo ""
 
 down:

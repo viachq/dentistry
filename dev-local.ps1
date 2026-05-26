@@ -49,15 +49,15 @@ function Start-Service([string]$Name, [string]$Dir, [string]$Cmd, [int]$Port) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$escaped'; $Cmd" | Out-Null
 }
 
-Start-Service "Backend"    (Join-Path $root "backend")        "uv run uvicorn app.main:app --reload --port 8001" 8001
-Start-Service "Frontend"   (Join-Path $root "frontend")       "npm.cmd run dev"                                  5175
-Start-Service "Backoffice" (Join-Path $root "admin-frontend") "npm.cmd run dev"                                  5176
+Start-Service "Backend"    (Join-Path $root "backend")        "uv run uvicorn app.main:app --reload --port 8870" 8870
+Start-Service "Frontend"   (Join-Path $root "frontend")       "npm.cmd run dev"                                  3180
+Start-Service "Backoffice" (Join-Path $root "admin-frontend") "npm.cmd run dev"                                  3181
 
 # ── Wait for all ──
 Write-Host ""
 Write-Host "Waiting for services to come up..." -ForegroundColor Cyan
 for ($i = 0; $i -lt 60; $i++) {
-    $up = @(8001, 5175, 5176) | Where-Object { Test-Port $_ }
+    $up = @(8870, 3180, 3181) | Where-Object { Test-Port $_ }
     if ($up.Count -eq 3) { break }
     Start-Sleep -Seconds 1
 }
@@ -65,9 +65,9 @@ for ($i = 0; $i -lt 60; $i++) {
 Write-Host ""
 Write-Host "=== DentaCare (Local) ===" -ForegroundColor Green
 Write-Host "  PostgreSQL  localhost:5433"
-Write-Host "  Backend     http://localhost:8001/docs"
-Write-Host "  Frontend    http://localhost:5175"
-Write-Host "  Backoffice  http://localhost:5176"
+Write-Host "  Backend     http://localhost:8870/docs"
+Write-Host "  Frontend    http://localhost:3180"
+Write-Host "  Backoffice  http://localhost:3181"
 Write-Host ""
 Write-Host "  Admin:   admin / admin12345" -ForegroundColor Yellow
 Write-Host "  Doctor:  doctor_demo / doctor12345" -ForegroundColor Yellow

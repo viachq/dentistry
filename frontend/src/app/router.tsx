@@ -7,6 +7,8 @@ import PatientPage from "../pages/PatientPage";
 import DoctorPublicPage from "../pages/DoctorPublicPage";
 import TeamPage from "../pages/TeamPage";
 import PricesPage from "../pages/PricesPage";
+import AboutPage from "../pages/AboutPage";
+import NotFoundPage from "../pages/NotFoundPage";
 import LoadingBlock from "../components/LoadingBlock";
 
 export function AppRouter() {
@@ -20,6 +22,7 @@ export function AppRouter() {
         <Route path="/doctors/:id" element={<DoctorPublicPage />} />
         <Route path="/team" element={<TeamPage />} />
         <Route path="/prices" element={<PricesPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/patient" replace /> : <LoginPage />}
@@ -28,7 +31,7 @@ export function AppRouter() {
           path="/patient"
           element={user && user.role === "patient" ? <PatientPage /> : <Navigate to="/login" replace />}
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

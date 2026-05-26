@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 1440
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5433/dentistry"
-    frontend_url: str = "http://localhost:5175"
-    frontend_urls: str = "http://localhost:5175,http://localhost:5176"
-    backend_public_url: str = "http://localhost:8001"
+    frontend_url: str = "http://localhost:3180"
+    frontend_urls: str = "http://localhost:3180,http://localhost:3181"
+    backend_public_url: str = "http://localhost:8870"
     upload_dir: str = str(Path(__file__).resolve().parents[3] / "uploads")
     first_superuser_username: str = "admin"
     first_superuser_password: str = "admin12345"

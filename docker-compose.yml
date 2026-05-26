@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: dentistry_pg_2026
       POSTGRES_DB: dentistry
+    ports:
+      - "5495:5432"
     volumes:
       - dentistry_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -21,11 +23,11 @@ services:
     build: ./backend
     container_name: dentistry_backend
     ports:
-      - "8001:8001"
+      - "8870:8870"
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:dentistry_pg_2026@db:5432/dentistry
-      BACKEND_PUBLIC_URL: http://localhost:8001
-      FRONTEND_URLS: http://localhost:5175,http://localhost:5176
+      BACKEND_PUBLIC_URL: http://localhost:8870
+      FRONTEND_URLS: http://localhost:3180,http://localhost:3181
       UPLOAD_DIR: /app/uploads
     volumes:
       - dentistry_uploads:/app/uploads
@@ -38,7 +40,7 @@ services:
     build: ./frontend
     container_name: dentistry_frontend
     ports:
-      - "5175:80"
+      - "3180:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -47,7 +49,7 @@ services:
     build: ./admin-frontend
     container_name: dentistry_admin
     ports:
-      - "5176:80"
+      - "3181:80"
     depends_on:
       - backend
     restart: unless-stopped

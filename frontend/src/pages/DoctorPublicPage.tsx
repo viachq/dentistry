@@ -4,27 +4,40 @@ import { api } from "../shared/api";
 import type { Doctor, Review } from "../shared/types";
 import { formatCurrency, formatDateTime, WEEKDAYS } from "../shared/format";
 import StarRating from "../components/StarRating";
-import LoadingBlock from "../components/LoadingBlock";
+import { DoctorPageSkeleton } from "../components/Skeleton";
+
+interface BeforeAfterCase {
+  id: number;
+  doctor_id: number;
+  title: string;
+  description: string | null;
+  before_image_url: string;
+  after_image_url: string;
+  created_at: string;
+}
 
 export default function DoctorPublicPage() {
   const { id } = useParams();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [cases, setCases] = useState<BeforeAfterCase[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get<Doctor>(`/doctors/${id}`),
       api.get<Review[]>(`/reviews?doctor_id=${id}&moderation_status=approved`),
+      api.get<BeforeAfterCase[]>(`/before-after?doctor_id=${id}`),
     ])
-      .then(([d, r]) => {
+      .then(([d, r, c]) => {
         setDoctor(d.data);
         setReviews(r.data);
+        setCases(c.data);
       })
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <LoadingBlock />;
+  if (loading) return <DoctorPageSkeleton />;
   if (!doctor) return <div className="text-center py-20 text-gray-500">Лікаря не знайдено</div>;
 
   const educationLines = doctor.education?.split("\n").filter(Boolean) ?? [];
@@ -112,6 +125,33 @@ export default function DoctorPublicPage() {
                 <span className="font-semibold text-blue-600">
                   {formatCurrency(custom_price ?? service.price)}
                 </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Before/After Gallery */}
+      {cases.length > 0 && (
+        <div className="card mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Результати роботи</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {cases.map((c) => (
+              <div key={c.id} className="rounded-xl overflow-hidden border border-gray-100">
+                <div className="grid grid-cols-2 gap-px bg-gray-200">
+                  <div className="relative">
+                    <img src={c.before_image_url} alt="До" className="w-full h-48 object-cover bg-white" />
+                    <span className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">До</span>
+                  </div>
+                  <div className="relative">
+                    <img src={c.after_image_url} alt="Після" className="w-full h-48 object-cover bg-white" />
+                    <span className="absolute bottom-2 left-2 bg-blue-600/80 text-white text-xs px-2 py-0.5 rounded">Після</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-white">
+                  <h3 className="font-medium text-gray-900 text-sm">{c.title}</h3>
+                  {c.description && <p className="text-xs text-gray-500 mt-1">{c.description}</p>}
+                </div>
               </div>
             ))}
           </div>

@@ -2,8 +2,18 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../shared/api";
 import type { Doctor, Review, Service, ClinicSettings } from "../shared/types";
+
+interface BeforeAfterCase {
+  id: number;
+  doctor_id: number;
+  title: string;
+  description: string | null;
+  before_image_url: string;
+  after_image_url: string;
+  created_at: string;
+}
 import { formatCurrency } from "../shared/format";
-import LoadingBlock from "../components/LoadingBlock";
+import { HeroSkeleton, CardSkeleton, DoctorCardSkeleton, ReviewSkeleton } from "../components/Skeleton";
 import StarRating from "../components/StarRating";
 import SocialLinks from "../components/SocialLinks";
 
@@ -75,6 +85,115 @@ const PRINCIPLES = [
   },
 ];
 
+function usePerPage() {
+  const calc = () => (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1);
+  const [pp, setPp] = useState(calc);
+  useEffect(() => {
+    const onResize = () => setPp(calc());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return pp;
+}
+
+function BeforeAfterCarousel({ cases }: { cases: BeforeAfterCase[] }) {
+  const [current, setCurrent] = useState(0);
+  const perPage = usePerPage();
+  const totalPages = Math.ceil(cases.length / perPage);
+  const safeIdx = Math.min(current, totalPages - 1);
+
+  useEffect(() => {
+    if (current >= totalPages) setCurrent(Math.max(0, totalPages - 1));
+  }, [current, totalPages]);
+
+  const prev = () => setCurrent((c) => (c - 1 + totalPages) % totalPages);
+  const next = () => setCurrent((c) => (c + 1) % totalPages);
+  const visible = cases.slice(safeIdx * perPage, safeIdx * perPage + perPage);
+
+  return (
+    <section className="py-20 bg-gray-950">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-blue-400 font-semibold mb-2">До / Після</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-white">
+              Результати наших пацієнтів
+            </h2>
+          </div>
+          {totalPages > 1 && (
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={prev}
+                className="w-10 h-10 rounded-full border border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-400 transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={next}
+                className="w-10 h-10 rounded-full border border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-400 transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visible.map((c) => (
+            <div key={c.id} className="group">
+              <h3 className="text-sm font-semibold text-white mb-4">
+                {c.title}
+              </h3>
+              <div className="rounded-xl overflow-hidden bg-gray-900 border border-gray-800">
+                <div className="relative">
+                  <img src={c.before_image_url} alt="До" className="w-full h-52 object-cover" />
+                  <span className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm text-white text-xs font-medium px-3 py-1 rounded-full">
+                    До
+                  </span>
+                </div>
+                <div className="h-px bg-gray-800" />
+                <div className="relative">
+                  <img src={c.after_image_url} alt="Після" className="w-full h-52 object-cover" />
+                  <span className="absolute top-3 left-3 bg-blue-600/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1 rounded-full">
+                    Після
+                  </span>
+                </div>
+              </div>
+              {c.description && (
+                <p className="text-xs text-gray-500 mt-3">{c.description}</p>
+              )}
+              <button className="text-sm text-blue-400 hover:text-blue-300 mt-2 font-medium transition-colors inline-flex items-center gap-1 group-hover:gap-2">
+                Подивитися повний кейс
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-10">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  i === safeIdx ? "bg-blue-500 w-6" : "bg-gray-700 hover:bg-gray-600"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -82,6 +201,11 @@ export default function HomePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [cases, setCases] = useState<BeforeAfterCase[]>([]);
+  const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "", message: "" });
+  const [contactSending, setContactSending] = useState(false);
+  const [contactSent, setContactSent] = useState(false);
+  const [contactError, setContactError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -89,17 +213,49 @@ export default function HomePage() {
       api.get<Service[]>("/services"),
       api.get<ClinicSettings>("/clinic-settings"),
       api.get<Review[]>("/reviews?moderation_status=approved"),
+      api.get<BeforeAfterCase[]>("/before-after"),
     ])
-      .then(([d, s, c, r]) => {
+      .then(([d, s, c, r, ba]) => {
         setDoctors(d.data);
         setServices(s.data);
         setSettings(c.data);
-        setReviews(r.data.slice(0, 4));
+        setReviews(r.data.slice(0, 6));
+        setCases(ba.data.slice(0, 6));
       })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingBlock />;
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactError("");
+    setContactSending(true);
+    try {
+      await api.post("/contact-messages", contactForm);
+      setContactSent(true);
+      setContactForm({ name: "", phone: "", email: "", message: "" });
+    } catch {
+      setContactError("Не вдалося надіслати. Спробуйте ще раз.");
+    } finally {
+      setContactSending(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="font-sans">
+        <HeroSkeleton />
+        <div className="bg-blue-900 py-10" />
+        <div className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="animate-pulse bg-gray-200 h-8 w-56 rounded mb-3" />
+            <div className="animate-pulse bg-gray-200 h-4 w-80 rounded mb-14" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
 
   return (
     <div className="font-sans">
@@ -115,7 +271,7 @@ export default function HomePage() {
         >
           <source src="/videos/hero-bg.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-950/90 via-blue-900/60 to-blue-800/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-gray-900/70 to-gray-800/40" />
 
         <div className="relative w-full max-w-6xl mx-auto px-6 py-20">
           <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.08] mb-4 max-w-2xl">
@@ -127,7 +283,7 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-4">
             <Link
               to="/login?tab=register"
-              className="inline-flex items-center gap-2 bg-white text-blue-900 font-semibold px-7 py-3.5 rounded-lg hover:bg-blue-50 transition-colors text-sm"
+              className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-8 py-4 rounded-xl hover:bg-blue-700 transition-colors text-sm shadow-lg shadow-blue-600/30"
             >
               Записатися на прийом
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +292,7 @@ export default function HomePage() {
             </Link>
             <a
               href="#services"
-              className="inline-flex items-center gap-2 border border-white/30 text-white px-7 py-3.5 rounded-lg hover:bg-white/10 transition-colors text-sm backdrop-blur-sm"
+              className="inline-flex items-center gap-2 border border-white/20 text-white/80 px-8 py-4 rounded-xl hover:bg-white/10 transition-colors text-sm backdrop-blur-sm"
             >
               Наші послуги
             </a>
@@ -286,6 +442,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Before/After Results — carousel */}
+      {cases.length > 0 && <BeforeAfterCarousel cases={cases} />}
+
       {/* Our Principles */}
       <section className="py-20 bg-gray-950 text-white">
         <div className="max-w-6xl mx-auto px-6">
@@ -307,29 +466,30 @@ export default function HomePage() {
 
       {/* Testimonials */}
       {reviews.length > 0 && (
-        <section className="py-20 bg-white">
+        <section id="reviews" className="py-20 bg-blue-50/50">
           <div className="max-w-6xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Відгуки пацієнтів</h2>
-                <p className="text-gray-500">Що кажуть ті, хто вже відвідав нашу клініку</p>
-              </div>
+            <div className="text-center mb-14">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Відгуки пацієнтів</h2>
+              <p className="text-gray-500 max-w-lg mx-auto">Що кажуть ті, хто вже довірив нам свою посмішку</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {reviews.map((r) => (
-                <div key={r.id} className="border border-gray-100 rounded-2xl p-6 hover:shadow-md transition-shadow">
-                  <div className="mb-3">
-                    <StarRating rating={r.rating} size="md" />
-                  </div>
+                <div key={r.id} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border border-gray-100/80 flex flex-col">
+                  <svg className="w-8 h-8 text-blue-200 mb-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151C7.563 6.068 6 8.789 6 11h4v10H0z"/>
+                  </svg>
                   {r.comment && (
-                    <p className="text-gray-700 text-sm leading-relaxed mb-4">"{r.comment}"</p>
+                    <p className="text-gray-700 text-sm leading-relaxed mb-4 flex-1">{r.comment}</p>
                   )}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{r.patient_name}</p>
-                      <p className="text-xs text-gray-400">{r.service_name}</p>
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <StarRating rating={r.rating} size="sm" />
                     </div>
-                    <p className="text-xs text-gray-400">{r.doctor_name}</p>
+                    <p className="text-sm font-semibold text-gray-900">{r.patient_name}</p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-gray-400">{r.service_name}</p>
+                      <p className="text-xs text-blue-500">{r.doctor_name}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -386,6 +546,84 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Contact Form */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">Зв'яжіться з нами</h2>
+            <p className="text-gray-500">Залиште повідомлення — ми зателефонуємо вам протягом робочого дня.</p>
+          </div>
+
+          {contactSent ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Дякуємо!</h3>
+              <p className="text-gray-500 mb-6">Ваше повідомлення отримано. Ми зв'яжемося з вами найближчим часом.</p>
+              <button onClick={() => setContactSent(false)} className="text-blue-600 text-sm hover:underline">
+                Надіслати ще одне повідомлення
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleContactSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                <div>
+                  <label className="label">Ім'я *</label>
+                  <input
+                    required
+                    minLength={2}
+                    className="input"
+                    placeholder="Ваше ім'я"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label">Телефон *</label>
+                  <input
+                    required
+                    minLength={6}
+                    className="input"
+                    placeholder="+380 XX XXX XX XX"
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="mb-5">
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="email@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                />
+              </div>
+              <div className="mb-6">
+                <label className="label">Повідомлення *</label>
+                <textarea
+                  required
+                  minLength={10}
+                  rows={4}
+                  className="input"
+                  placeholder="Опишіть ваше питання або побажання..."
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                />
+              </div>
+              {contactError && <p className="text-red-500 text-sm mb-4">{contactError}</p>}
+              <button type="submit" disabled={contactSending} className="btn-primary w-full py-3">
+                {contactSending ? "Надсилання..." : "Надіслати повідомлення"}
+              </button>
+            </form>
+          )}
         </div>
       </section>
 

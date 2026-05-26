@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../shared/api";
 import type { Service } from "../shared/types";
 import { formatCurrency } from "../shared/format";
-import LoadingBlock from "../components/LoadingBlock";
+import { CardSkeleton } from "../components/Skeleton";
 
 const CATEGORY_ORDER = [
   "Консультація",
@@ -31,7 +31,20 @@ export default function PricesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingBlock />;
+  if (loading)
+    return (
+      <div className="bg-white min-h-screen">
+        <div className="max-w-4xl mx-auto px-4 py-14">
+          <div className="animate-pulse bg-gray-200 h-9 w-96 rounded mb-2" />
+          <div className="animate-pulse bg-gray-200 h-4 w-64 rounded mb-10" />
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="animate-pulse bg-gray-100 h-14 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
 
   const grouped: Record<string, Service[]> = {};
   for (const svc of services) {

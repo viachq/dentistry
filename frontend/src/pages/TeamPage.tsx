@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../shared/api";
 import type { Doctor } from "../shared/types";
 import StarRating from "../components/StarRating";
-import LoadingBlock from "../components/LoadingBlock";
+import { DoctorCardSkeleton } from "../components/Skeleton";
 
 export default function TeamPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -16,7 +16,18 @@ export default function TeamPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingBlock />;
+  if (loading)
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="mb-10">
+          <div className="animate-pulse bg-gray-200 h-8 w-48 rounded mb-2" />
+          <div className="animate-pulse bg-gray-200 h-5 w-72 rounded" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => <DoctorCardSkeleton key={i} />)}
+        </div>
+      </div>
+    );
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">

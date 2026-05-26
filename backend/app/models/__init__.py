@@ -1,4 +1,6 @@
 from app.models.appointment import Appointment
+from app.models.before_after import BeforeAfterCase
+from app.models.contact_message import ContactMessage
 from app.models.notification import Notification, NotificationType
 from app.models.doctor_profile import DoctorProfile
 from app.models.patient_note import PatientNote
@@ -18,6 +20,8 @@ from app.models.user import User, UserRole
 
 __all__ = [
     "Appointment",
+    "BeforeAfterCase",
+    "ContactMessage",
     "DoctorProfile",
     "DentalVisit",
     "Notification",

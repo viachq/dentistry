@@ -80,7 +80,7 @@ Admin-frontend (кабінет персоналу):
 ТЕХНІЧНІ ХАРАКТЕРИСТИКИ
 ────────────────────────────────────────────────────────────
 
-  База даних:  PostgreSQL, порт 5435
-  API:         http://localhost:8001  (документація /docs)
-  Клієнт:      http://localhost:5175
-  Адмін-панель: http://localhost:5176
+  База даних:  PostgreSQL, порт 5495
+  API:         http://localhost:8870  (документація /docs)
+  Клієнт:      http://localhost:3180
+  Адмін-панель: http://localhost:3181

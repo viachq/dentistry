@@ -12,6 +12,10 @@ class ClinicSettingsBase(BaseModel):
     facebook_url: str | None = Field(default=None, max_length=255)
     youtube_url: str | None = Field(default=None, max_length=255)
     tiktok_url: str | None = Field(default=None, max_length=255)
+    twitter_url: str | None = Field(default=None, max_length=255)
+    viber_url: str | None = Field(default=None, max_length=255)
+    whatsapp_url: str | None = Field(default=None, max_length=255)
+    linkedin_url: str | None = Field(default=None, max_length=255)
     working_hours_note: str | None = Field(default=None, max_length=255)
     about_text: str | None = None
 

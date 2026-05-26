@@ -9,7 +9,7 @@ RUN uv sync --no-dev
 COPY . .
 RUN mkdir -p uploads
 
-EXPOSE 8001
+EXPOSE 8870
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
