@@ -27,5 +27,8 @@ Thumbs.db
 # Uploads
 uploads/
 
+# Test artifacts
+*.db
+
 # Claude Code
 .claude/
