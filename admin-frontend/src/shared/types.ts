@@ -188,3 +188,31 @@ export interface DentalVisit {
   doctor_notes: string | null;
   created_at: string;
 }
+
+export interface BeforeAfterCase {
+  id: number;
+  doctor_id: number;
+  title: string;
+  description: string | null;
+  before_image_url: string;
+  after_image_url: string;
+  is_published: boolean;
+  created_at: string;
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface MonthlyAnalytics {
+  month: string;      // "2025-01"
+  revenue: number;
+  expenses: number;
+  appointments: number;
+}

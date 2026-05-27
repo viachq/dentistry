@@ -20,6 +20,7 @@ class PatientRegisterRequest(BaseModel):
     password: str
     full_name: str
     phone: str | None = None
+    email: str | None = None
 
     @field_validator("phone")
     @classmethod
@@ -38,3 +39,16 @@ class UserRead(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
+    email: str | None = None
+    phone: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
